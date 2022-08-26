@@ -2,30 +2,30 @@
 
 import matplotlib
 
-matplotlib.use('Agg')
-from matplotlib.pyplot import *
+import matplotlib.pyplot as plt
 import h5py as h5
 import astropy.io.fits as pf
 import numpy as np
 import healpy as hp
+
 from astropy import units as u
-from astropy import cosmology
 from astropy.cosmology import FlatLambdaCDM
 
 h = 0.7
 cosmo = FlatLambdaCDM(H0=100. * h, Om0=0.3)
+
 import os
 import sys
 from scipy.interpolate import interp1d
-from scipy import integrate
-import treecorr
 import kmeans_radec
 
 center_data = np.loadtxt('./data/kmeans_centers_npix100_desy3.dat',
                          unpack=True)
+
 km = kmeans_radec.KMeans(
     np.loadtxt('./data/kmeans_centers_npix100_desy3.dat')
 )  ### could be any kmeans JK patch centers  ==> this is for cutting galaxies fast
+
 from astropy.coordinates import SkyCoord
 import time as t
 
@@ -44,35 +44,67 @@ def cut_catalog(catdir_name,
                 dict_radec_name=None,
                 random=False,
                 N_randoms=None):  ## only for fits files
+    """_summary_
+
+    Args:
+        catdir_name (_type_): _description_
+        dict_cut (_type_): _description_
+        mask (_type_, optional): _description_. Defaults to None.
+        nside (_type_, optional): _description_. Defaults to None.
+        nest (bool, optional): _description_. Defaults to True.
+        dict_radec_name (_type_, optional): _description_. Defaults to None.
+        random (bool, optional): _description_. Defaults to False.
+        N_randoms (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+
     data = pf.open(catdir_name)[1].data
-    var_list = dict_cut.keys(
+
+    column_list = dict_cut.keys(
     )  ##dict_cut: 'keys' for the dictionary = column name in the fits file for selection // 'values' for the dictionary: min and max for that quantity
-    for i, var in enumerate(var_list):
+
+    for i, column in enumerate(column_list):
+
         if i == 0:
-            ind = (data[var] > dict_cut[var][0]) * (data[var] <=
-                                                    dict_cut[var][1])
+            ind = (data[column] > dict_cut[column][0]) * (data[column] <=
+                                                          dict_cut[column][1])
+
         else:
-            ind *= (data[var] > dict_cut[var][0]) * (data[var] <=
-                                                     dict_cut[var][1])
+            ind *= (data[column] > dict_cut[column][0]) * (data[column] <=
+                                                           dict_cut[column][1])
+
+        #ind is the mask for the rows in the desirable range
+
     data = data[ind]
+
     if mask is not None:
+        #mask here is healpix pixels
+
         RAtem = data[dict_radec_name['RA']]
         DECtem = data[dict_radec_name['DEC']]
+
         THETA = (90.0 -
                  DECtem) * np.pi / 180.  ### THETA, PHI ==> HEALPIX PIXEL
         PHI = RAtem * np.pi / 180.
         PIX = hp.ang2pix(nside, THETA, PHI, nest=nest)
+
         data = data[(mask[PIX] == 1)]
+
     if random == True:
         subsample = np.random.choice(len(data), size=N_randoms, replace=False)
         data = data[subsample]
+
     return data
 
 
 def dist_comoving():
+
     zbin = np.linspace(0, 2, 2001)
     distbin = (cosmo.comoving_distance(zbin).value) * 10**6 * h
     func_dist = interp1d(zbin, distbin, fill_value='extrapolate')
+
     return func_dist
 
 
@@ -81,31 +113,37 @@ def cut_source(catdir_name,
                run_jk_kmeans=False,
                jk_dir=None,
                run_healpy=True):
+
     f = h5.File(catdir_name, 'r')
+
     if (select_src == "dnf") | (select_src == "bpz"):
         sel_src = np.array(f['index/select'])
         mask_1p = np.array(f['index/select_1p'])
         mask_1m = np.array(f['index/select_1m'])
         mask_2p = np.array(f['index/select_2p'])
         mask_2m = np.array(f['index/select_2m'])
+
     elif select_src == "bin1":
         sel_src = np.array(f['index/select_bin1'])
         mask_1p = np.array(f['index/select_1p_bin1'])
         mask_1m = np.array(f['index/select_1m_bin1'])
         mask_2p = np.array(f['index/select_2p_bin1'])
         mask_2m = np.array(f['index/select_2m_bin1'])
+
     elif select_src == "bin2":
         sel_src = np.array(f['index/select_bin2'])
         mask_1p = np.array(f['index/select_1p_bin2'])
         mask_1m = np.array(f['index/select_1m_bin2'])
         mask_2p = np.array(f['index/select_2p_bin2'])
         mask_2m = np.array(f['index/select_2m_bin2'])
+
     elif select_src == "bin3":
         sel_src = np.array(f['index/select_bin3'])
         mask_1p = np.array(f['index/select_1p_bin3'])
         mask_1m = np.array(f['index/select_1m_bin3'])
         mask_2p = np.array(f['index/select_2p_bin3'])
         mask_2m = np.array(f['index/select_2m_bin3'])
+
     elif select_src == "bin4":
         sel_src = np.array(f['index/select_bin4'])
         mask_1p = np.array(f['index/select_1p_bin4'])
