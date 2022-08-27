@@ -100,6 +100,11 @@ def cut_catalog(catdir_name,
 
 
 def dist_comoving():
+    """Calculate the comoving distance 
+
+    Returns:
+        _type_: _description_
+    """
 
     zbin = np.linspace(0, 2, 2001)
     distbin = (cosmo.comoving_distance(zbin).value) * 10**6 * h
@@ -114,7 +119,7 @@ def cut_source(catdir_name,
                jk_dir=None,
                run_healpy=True):
 
-    f = h5.File(catdir_name, 'r')
+    f = h5.File(catdir_name, 'r')  #filename
 
     if (select_src == "dnf") | (select_src == "bpz"):
         sel_src = np.array(f['index/select'])
@@ -152,12 +157,15 @@ def cut_source(catdir_name,
         mask_2m = np.array(f['index/select_2m_bin4'])
 
     dgamma = 2 * 0.01
+
     R11s = (
         np.array(f['catalog/metacal/unsheared/e_1'])[mask_1p].mean() -
         np.array(f['catalog/metacal/unsheared/e_1'])[mask_1m].mean()) / dgamma
+
     R22s = (
         np.array(f['catalog/metacal/unsheared/e_2'])[mask_2p].mean() -
         np.array(f['catalog/metacal/unsheared/e_2'])[mask_2m].mean()) / dgamma
+
     Rs = 0.5 * (R11s + R22s)
 
     ra = np.array(f['catalog/gold/ra'])[sel_src]
@@ -177,6 +185,7 @@ def cut_source(catdir_name,
     e2_mean = np.average(e2, weights=w_e)
     e1 = e1 - e1_mean
     e2 = e2 - e2_mean
+
     hpix = hp.ang2pix(
         512, ra, dec, nest=True, lonlat=True
     )  ### nside 512, nested ==> each heal-pixel is about 0.12 deg in diameter
@@ -188,14 +197,19 @@ def cut_source(catdir_name,
     distmc_dnf = func_dist(zmc_dnf)
 
     if jk_dir is not None:
+        #
         if run_jk_kmeans:
+
             ratem = ra.copy()
             ratem[ratem > 250.] -= 360.
             radec = np.vstack((ratem, dec)).T
+
             nstep = int(
                 len(ra) / 4000000 + 1
             )  ### 4,000,000 galaxies per time (memory issue ==> if it can handle more increase it)
+
             jk = np.zeros(len(ra))
+
             for i in range(nstep):
                 print(i, 'of', nstep, 'done calculating jk_src')
                 if i != nstep - 1:
@@ -203,7 +217,9 @@ def cut_source(catdir_name,
                         radec[i * 4000000:(i + 1) * 4000000])
                 else:
                     jk[i * 4000000:] = km.find_nearest(radec[i * 4000000:])
+
             np.savez(jk_dir, jk=jk)
+
         else:
             jk = np.load(
                 jk_dir + '.npz'
@@ -222,6 +238,7 @@ def run_DS(RA,
            select_src='dnf',
            comoving=True,
            cut_with_jk=False):
+
     if cut_with_jk:
         ra, dec, R11, R22, R12, R21, e1, e2, z_bpz, z_dnf, zmc_bpz, zmc_dnf, dist_bpz, dist_dnf, distmc_bpz, distmc_dnf, w_e, jk, hpix, Rs = src_cat
     else:
@@ -232,6 +249,7 @@ def run_DS(RA,
         MpcPerDeg /= (1. + Z)
 
     pos_lens = SkyCoord(ra=RA * u.deg, dec=DEC * u.deg)
+
     if cut_with_jk:
         pos_jk = SkyCoord(ra=center_data[0] * u.deg,
                           dec=center_data[1] * u.deg)
@@ -337,6 +355,7 @@ def run_DS(RA,
     wt = w_e * (1. /
                 (1.663 * 10**12)) * (1. + Z) * Dist * (1. - Dist / dist_dnf)
     sci = (1. / (1.663 * 10**12)) * (1. + Z) * Dist * (1. - Dist / distmc_dnf)
+
     if comoving == False:
         wt /= 1. + Z
         sci /= 1. + Z
@@ -345,7 +364,9 @@ def run_DS(RA,
     top_src = wt * et
     top_im_src = wt * ex
     bottom_src = wt * sci * R_rot
+
     for i in range(len(R) - 1):
+
         thmin = np.arctan(R[i] * 10**6 / Dist) * (180. / np.pi)
         thmax = np.arctan(R[i + 1] * 10**6 / Dist) * (180. / np.pi)
         ind_th = (deg_src >= thmin) * (deg_src < thmax)
@@ -361,6 +382,7 @@ def run_DS(RA,
                                    bins=pz_bin_dnf,
                                    weights=bottom_src[ind_th])
         pz_dnf[i] = hist_dnf
+
     return top, top_im, bottom, weight, pz_bpz, pz_dnf
 
 
@@ -381,6 +403,7 @@ if __name__ == "__main__":
     ran_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_randcat_z0.10-0.95_lgt020_vl02.fit'
     src_dir = '/project/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.1_12_22_20.h5'
     dat_save_dir = '/global/cscratch1/sd/taeshin/'
+
     dict_lens_cut = {
         "Z_LAMBDA": [zmin, zmax],
         "LAMBDA_CHISQ": [lmin, lmax]
