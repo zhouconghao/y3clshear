@@ -212,6 +212,7 @@ def cut_source(catdir_name,
 
             for i in range(nstep):
                 print(i, 'of', nstep, 'done calculating jk_src')
+
                 if i != nstep - 1:
                     jk[i * 4000000:(i + 1) * 4000000] = km.find_nearest(
                         radec[i * 4000000:(i + 1) * 4000000])
@@ -245,16 +246,20 @@ def run_DS(RA,
         ra, dec, R11, R22, R12, R21, e1, e2, z_bpz, z_dnf, zmc_bpz, zmc_dnf, dist_bpz, dist_dnf, distmc_bpz, distmc_dnf, w_e, hpix, Rs = src_cat
 
     MpcPerDeg = (h * 60. * (cosmo.kpc_comoving_per_arcmin(Z)) / 1000.).value
+
     if comoving == False:  ##if using physical distance
         MpcPerDeg /= (1. + Z)
 
     pos_lens = SkyCoord(ra=RA * u.deg, dec=DEC * u.deg)
 
     if cut_with_jk:
+
         pos_jk = SkyCoord(ra=center_data[0] * u.deg,
                           dec=center_data[1] * u.deg)
+
         jk_dist = pos_lens.separation(
             pos_jk).degree  ### distances from the lens to each jk patch center
+
         ind = jk_dist < 15. + R[
             -1] / MpcPerDeg  ## 15 = approx. double the size of the jk patch length + extra for make sure we don't miss anything
         jk_neigh = np.arange(100)[ind]  ## 100 = number of jk patches
@@ -313,7 +318,7 @@ def run_DS(RA,
         R11 = R11[ind_behind]
         R12 = R12[ind_behind]
         R21 = R21[ind_behind]
-        R22 = R22_tem[ind_behind]
+        R22 = R22[ind_behind]
         e1 = e1[ind_behind]
         e2 = e2[ind_behind]
         z_bpz = z_bpz[ind_behind]
@@ -348,17 +353,23 @@ def run_DS(RA,
     ang_rad = np.pi / 2. + pos_lens.position_angle(pos_src).radian
     cos2phi = np.cos(2. * ang_rad)
     sin2phi = np.sin(2. * ang_rad)
+
     et = -e1 * cos2phi - e2 * sin2phi
     ex = e1 * sin2phi - e2 * cos2phi
+
     R_rot = R11 * cos2phi**2 + R22 * sin2phi**2 + (
         R12 + R21) * sin2phi * cos2phi + Rs
+
     wt = w_e * (1. /
                 (1.663 * 10**12)) * (1. + Z) * Dist * (1. - Dist / dist_dnf)
-    sci = (1. / (1.663 * 10**12)) * (1. + Z) * Dist * (1. - Dist / distmc_dnf)
+
+    sci = (1. / (1.663 * 10**12)) * (1. + Z) * Dist * (1. - Dist / distmc_dnf
+                                                       )  #SigmaCrit inverse
 
     if comoving == False:
         wt /= 1. + Z
         sci /= 1. + Z
+
     wt[wt < 0.] = 0.
     sci[sci < 0.] = 0.
     top_src = wt * et
@@ -369,6 +380,7 @@ def run_DS(RA,
 
         thmin = np.arctan(R[i] * 10**6 / Dist) * (180. / np.pi)
         thmax = np.arctan(R[i + 1] * 10**6 / Dist) * (180. / np.pi)
+
         ind_th = (deg_src >= thmin) * (deg_src < thmax)
         top[i] = np.sum(top_src[ind_th])
         top_im[i] = np.sum(top_im_src[ind_th])
