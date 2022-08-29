@@ -1,6 +1,13 @@
 # based on code from Tae
 
-import matplotlib
+from tkinter import N
+from mpi4py import MPI
+from mpi4py.MPI import COMM_WORLD
+
+comm = MPI.COMM_WORLD
+mpi_size = comm.Get_size()
+assert mpi_size == 200
+mpi_rank = comm.Get_rank()
 
 import matplotlib.pyplot as plt
 import h5py as h5
@@ -350,6 +357,8 @@ def run_DS(RA,
         distmc_bpz /= (1. + zmc_bpz)
         distmc_dnf /= (1. + zmc_dnf)
 
+    assert ~np.any(distmc_dnf == 0)
+
     ang_rad = np.pi / 2. + pos_lens.position_angle(pos_src).radian
     cos2phi = np.cos(2. * ang_rad)
     sin2phi = np.sin(2. * ang_rad)
@@ -414,12 +423,13 @@ if __name__ == "__main__":
     len_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_lgt20_vl02_catalog.fit'
     ran_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_randcat_z0.10-0.95_lgt020_vl02.fit'
     src_dir = '/project/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.1_12_22_20.h5'
-    dat_save_dir = '/global/cscratch1/sd/taeshin/'
+    dat_save_dir = '/global/cscratch1/sd/zchusre/'
 
     dict_lens_cut = {
         "Z_LAMBDA": [zmin, zmax],
         "LAMBDA_CHISQ": [lmin, lmax]
     }  ## dictionary for the lenses cut
+
     dict_rand_cut = {
         "ZTRUE": [zmin, zmax],
         "LAMBDA_IN": [lmin, lmax]
@@ -429,8 +439,17 @@ if __name__ == "__main__":
 
     t1 = t.time()
 
-    len_cat = cut_catalog(len_dir, dict_lens_cut)
-    N_lens = len(len_cat)
+    if mpi_rank == 0:
+        len_cat = cut_catalog(len_dir, dict_lens_cut)
+        N_lens = len(len_cat)
+        N_step = round(N_lens / mpi_size)
+
+        for i in mpi_size:
+            if i != mpi_size - 1:
+                comm.send(len_cat[i * N_step, (i + 1) * Nstep], dest=i, tag=99)
+    else:
+        len_cat = comm.recv(source=0, tag=99)
+
     N_rand = 20 * N_lens
     ran_cat = cut_catalog(ran_dir,
                           dict_rand_cut,
@@ -443,12 +462,14 @@ if __name__ == "__main__":
     RA_len = len_cat["RA"]
     DEC_len = len_cat["DEC"]
     Z_len = len_cat["Z"]
+
     RA_ran = ran_cat["RA"]
     DEC_ran = ran_cat["DEC"]
     Z_ran = ran_cat["ZTRUE"]
 
     t1 = t.time()
 
+    print("Start cutting source.")
     src_cat = cut_source(src_dir,
                          select_src,
                          run_jk_kmeans=False,
@@ -456,6 +477,7 @@ if __name__ == "__main__":
                          run_healpy=True)
 
     t2 = t.time()
+
     print('reading and preparing source catalog took %.2f seconds' % (t2 - t1))
 
     t1 = t.time()
@@ -470,5 +492,6 @@ if __name__ == "__main__":
                                                          cut_with_jk=True)
 
     t2 = t.time()
+
     print('DS=', top / bottom,
           'time taken for calculating DSigma = %.2f seconds' % (t2 - t1))
