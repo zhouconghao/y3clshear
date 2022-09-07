@@ -62,11 +62,14 @@ if __name__ == "__main__":
 
         for i in mpi_size:
             if i != mpi_size - 1:
-                comm.send(len_cat[i * N_step, (i + 1) * Nstep], dest=i, tag=99)
+                comm.send(len_cat[i * N_step, (i + 1) * N_step],
+                          dest=i,
+                          tag=99)
     else:
         len_cat = comm.recv(source=0, tag=99)
 
     N_rand = 20 * N_lens
+
     ran_cat = cut_catalog(ran_dir,
                           dict_rand_cut,
                           random=True,
