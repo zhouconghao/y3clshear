@@ -1,12 +1,14 @@
 from measure_clshear import cut_catalog, cut_source, R_bin, run_DS
+import numpy as np
 
 from mpi4py import MPI
 from mpi4py.MPI import COMM_WORLD
+import sys
 
 comm = MPI.COMM_WORLD
 mpi_size = comm.Get_size()
-assert mpi_size == 200
 mpi_rank = comm.Get_rank()
+print("MPI size is", mpi_size)
 
 import kmeans_radec
 
@@ -65,6 +67,10 @@ if __name__ == "__main__":
                 comm.send(len_cat[i * N_step, (i + 1) * N_step],
                           dest=i,
                           tag=99)
+
+            else:
+                comm.send(len_cat[(i * N_step), :], dest=i, tag=99)
+
     else:
         len_cat = comm.recv(source=0, tag=99)
 
@@ -109,6 +115,8 @@ if __name__ == "__main__":
                                                          select_src='bin1',
                                                          comoving=True,
                                                          cut_with_jk=True)
+
+    # Need some write function.
 
     t2 = t.time()
 
