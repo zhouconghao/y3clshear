@@ -1,19 +1,16 @@
 # based on code from Tae
 
-from tkinter import N
-
 import matplotlib.pyplot as plt
 import h5py as h5
 import astropy.io.fits as pf
 import numpy as np
 import healpy as hp
-
-import os
-import sys
 from scipy.interpolate import interp1d
-
 from astropy.coordinates import SkyCoord
-import time as t
+
+import kmeans_radec
+
+from astropy import units as u
 
 
 def R_bin(Rm, RM, N):
@@ -79,13 +76,14 @@ def cut_catalog(catdir_name,
         data = data[(mask[PIX] == 1)]
 
     if random == True:
+        #random sample lenses
         subsample = np.random.choice(len(data), size=N_randoms, replace=False)
         data = data[subsample]
 
     return data
 
 
-def dist_comoving():
+def dist_comoving(cosmo, h):
     """Calculate the comoving distance 
 
     Returns:
@@ -103,9 +101,16 @@ def cut_source(catdir_name,
                select_src,
                run_jk_kmeans=False,
                jk_dir=None,
-               run_healpy=True):
+               run_healpy=True,
+               cosmo=None,
+               h=None):
 
-    f = h5.File(catdir_name, 'r')  #filename
+    f = h5.File(catdir_name, 'r', driver='core')  #filename
+    print("Load h5 file.")
+
+    km = kmeans_radec.KMeans(
+        np.loadtxt('./data/kmeans_centers_npix100_desy3.dat')
+    )  ### could be any kmeans JK patch centers  ==> this is for cutting galaxies fast
 
     if (select_src == "dnf") | (select_src == "bpz"):
         sel_src = np.array(f['index/select'])
@@ -142,6 +147,8 @@ def cut_source(catdir_name,
         mask_2p = np.array(f['index/select_2p_bin4'])
         mask_2m = np.array(f['index/select_2m_bin4'])
 
+    print("Load sel_src and mask.")
+
     dgamma = 2 * 0.01
 
     R11s = (
@@ -151,6 +158,8 @@ def cut_source(catdir_name,
     R22s = (
         np.array(f['catalog/metacal/unsheared/e_2'])[mask_2p].mean() -
         np.array(f['catalog/metacal/unsheared/e_2'])[mask_2m].mean()) / dgamma
+
+    print("Load R11s R22s.")
 
     Rs = 0.5 * (R11s + R22s)
 
@@ -172,15 +181,19 @@ def cut_source(catdir_name,
     e1 = e1 - e1_mean
     e2 = e2 - e2_mean
 
+    print("Load others.")
+
     hpix = hp.ang2pix(
         512, ra, dec, nest=True, lonlat=True
     )  ### nside 512, nested ==> each heal-pixel is about 0.12 deg in diameter
 
-    func_dist = dist_comoving()
+    func_dist = dist_comoving(cosmo, h)
     dist_bpz = func_dist(z_bpz)
     dist_dnf = func_dist(z_dnf)
     distmc_bpz = func_dist(zmc_bpz)
     distmc_dnf = func_dist(zmc_dnf)
+
+    print("Calculating comoving distance.")
 
     if jk_dir is not None:
         #
@@ -211,6 +224,7 @@ def cut_source(catdir_name,
             jk = np.load(
                 jk_dir + '.npz'
             )['jk']  ## if already saved in npz file format with the column name "jk"
+
         return ra, dec, R11, R22, R12, R21, e1, e2, z_bpz, z_dnf, zmc_bpz, zmc_dnf, dist_bpz, dist_dnf, distmc_bpz, distmc_dnf, w_e, jk, hpix, Rs
 
     else:
@@ -224,7 +238,11 @@ def run_DS(RA,
            src_cat,
            select_src='dnf',
            comoving=True,
-           cut_with_jk=False):
+           cut_with_jk=False,
+           cosmo=None,
+           h=None,
+           center_data=None,
+           NBINS=None):
 
     if cut_with_jk:
         ra, dec, R11, R22, R12, R21, e1, e2, z_bpz, z_dnf, zmc_bpz, zmc_dnf, dist_bpz, dist_dnf, distmc_bpz, distmc_dnf, w_e, jk, hpix, Rs = src_cat
