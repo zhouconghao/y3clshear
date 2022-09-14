@@ -114,6 +114,8 @@ def cut_source(catdir_name,
 
     if (select_src == "dnf") | (select_src == "bpz"):
         sel_src = np.array(f['index/select'])
+        zmc_dnf = np.array(f['catalog/dnf/unsheared/zmc_sof'])[sel_src]
+        sel_src = sel_src[zmc_dnf > 0]
         mask_1p = np.array(f['index/select_1p'])
         mask_1m = np.array(f['index/select_1m'])
         mask_2p = np.array(f['index/select_2p'])
@@ -193,6 +195,9 @@ def cut_source(catdir_name,
     distmc_bpz = func_dist(zmc_bpz)
     distmc_dnf = func_dist(zmc_dnf)
 
+    print(np.min(zmc_dnf))
+    assert ~np.any(distmc_dnf == 0)
+
     print("Calculating comoving distance.")
 
     if jk_dir is not None:
@@ -266,7 +271,9 @@ def run_DS(RA,
 
         ind = jk_dist < 15. + R[
             -1] / MpcPerDeg  ## 15 = approx. double the size of the jk patch length + extra for make sure we don't miss anything
+
         jk_neigh = np.arange(100)[ind]  ## 100 = number of jk patches
+
         ind_jk_src = np.in1d(jk, jk_neigh)
 
         ra = ra[ind_jk_src]
@@ -347,14 +354,13 @@ def run_DS(RA,
     pz_dnf = np.zeros((NBINS, 301))
 
     Dist = (cosmo.comoving_distance(Z).value * 10**6) * h
+
     if comoving == False:
         Dist /= (1. + Z)
         dist_bpz /= (1. + z_bpz)
         dist_dnf /= (1. + z_dnf)
         distmc_bpz /= (1. + zmc_bpz)
         distmc_dnf /= (1. + zmc_dnf)
-
-    assert ~np.any(distmc_dnf == 0)
 
     ang_rad = np.pi / 2. + pos_lens.position_angle(pos_src).radian
     cos2phi = np.cos(2. * ang_rad)

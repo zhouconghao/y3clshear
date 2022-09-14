@@ -8,10 +8,10 @@ import time as t
 from astropy import units as u
 from astropy.cosmology import FlatLambdaCDM
 
-h = 0.7
-cosmo = FlatLambdaCDM(H0=100. * h, Om0=0.3)
-
 if __name__ == "__main__":
+
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100. * h, Om0=0.3)
 
     comm = MPI.COMM_WORLD
     mpi_size = comm.Get_size()
@@ -35,6 +35,7 @@ if __name__ == "__main__":
     len_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_lgt20_vl02_catalog.fit'
     ran_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_randcat_z0.10-0.95_lgt020_vl02.fit'
     src_dir = '/global/cfs/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.0_DO_NOT_USE.h5'
+    # src_dir = '/global/cfs/projectdirs/des/www/y3_cats/Y3_mastercat_6_15_19_subsampled.h5'
     dat_save_dir = './'
 
     dict_lens_cut = {
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     t1 = t.time()
 
     if mpi_rank != mpi_size - 1:
-        for run_id in N_step:
+        for run_id in np.arange(N_step):
             top, top_im, bottom, weight, pz_bpz, pz_dnf = run_DS(
                 RA_len[run_id],
                 DEC_len[run_id],
@@ -105,6 +106,7 @@ if __name__ == "__main__":
                 comoving=True,
                 cut_with_jk=True,
                 cosmo=cosmo,
+                center_data=center_data,
                 h=h,
                 NBINS=NBINS)
 
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     t2 = t.time()
     print("Time spent calculating", (t2 - t1))
 
-    # Need some write function.
+    # Need some write function.0
 
     # print('DS=', top / bottom,
     #       'time taken for calculating DSigma = %.2f seconds' % (t2 - t1))
