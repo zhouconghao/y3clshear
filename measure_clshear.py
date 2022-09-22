@@ -90,11 +90,13 @@ def dist_comoving(cosmo, h):
         _type_: _description_
     """
 
+    print("In dist_comoving")
+
     zbin = np.linspace(0, 2, 2001)
     distbin = (cosmo.comoving_distance(zbin).value) * 10**6 * h
-    func_dist = interp1d(zbin, distbin, fill_value='extrapolate')
+    dist_func = interp1d(zbin, distbin, fill_value="extrapolate")
 
-    return func_dist
+    return dist_func
 
 
 def cut_source(catdir_name,
@@ -102,94 +104,92 @@ def cut_source(catdir_name,
                run_jk_kmeans=False,
                jk_dir=None,
                run_healpy=True,
-               cosmo=None,
-               h=None):
-
-    f = h5.File(catdir_name, 'r', driver='core')  #filename
-    print("Load h5 file.")
+               func_dist=None):
 
     km = kmeans_radec.KMeans(
         np.loadtxt('./data/kmeans_centers_npix100_desy3.dat')
     )  ### could be any kmeans JK patch centers  ==> this is for cutting galaxies fast
 
-    if (select_src == "dnf") | (select_src == "bpz"):
-        sel_src = np.array(f['index/select'])
-        zmc_dnf = np.array(f['catalog/dnf/unsheared/zmc_sof'])[sel_src]
-        sel_src = sel_src[zmc_dnf > 0]
-        mask_1p = np.array(f['index/select_1p'])
-        mask_1m = np.array(f['index/select_1m'])
-        mask_2p = np.array(f['index/select_2p'])
-        mask_2m = np.array(f['index/select_2m'])
+    with h5.File(catdir_name, 'r', driver='core') as f:
 
-    elif select_src == "bin1":
-        sel_src = np.array(f['index/select_bin1'])
-        mask_1p = np.array(f['index/select_1p_bin1'])
-        mask_1m = np.array(f['index/select_1m_bin1'])
-        mask_2p = np.array(f['index/select_2p_bin1'])
-        mask_2m = np.array(f['index/select_2m_bin1'])
+        if (select_src == "dnf"):
+            sel_src = f['index/metacal/select'][:]
+            dnf_mask = (f['catalog/dnf/unsheared/zmean_sof'][:] > 0)[sel_src]
+            sel_src = sel_src[dnf_mask]
 
-    elif select_src == "bin2":
-        sel_src = np.array(f['index/select_bin2'])
-        mask_1p = np.array(f['index/select_1p_bin2'])
-        mask_1m = np.array(f['index/select_1m_bin2'])
-        mask_2p = np.array(f['index/select_2p_bin2'])
-        mask_2m = np.array(f['index/select_2m_bin2'])
+            mask_1p = f['index/select_1p'][:]
+            mask_1m = f['index/select_1m'][:]
+            mask_2p = f['index/select_2p'][:]
+            mask_2m = f['index/select_2m'][:]
 
-    elif select_src == "bin3":
-        sel_src = np.array(f['index/select_bin3'])
-        mask_1p = np.array(f['index/select_1p_bin3'])
-        mask_1m = np.array(f['index/select_1m_bin3'])
-        mask_2p = np.array(f['index/select_2p_bin3'])
-        mask_2m = np.array(f['index/select_2m_bin3'])
+        elif select_src == "bin1":
+            sel_src = f['index/select_bin1'][:]
+            mask_1p = f['index/select_1p_bin1'][:]
+            mask_1m = f['index/select_1m_bin1'][:]
+            mask_2p = f['index/select_2p_bin1'][:]
+            mask_2m = f['index/select_2m_bin1'][:]
 
-    elif select_src == "bin4":
-        sel_src = np.array(f['index/select_bin4'])
-        mask_1p = np.array(f['index/select_1p_bin4'])
-        mask_1m = np.array(f['index/select_1m_bin4'])
-        mask_2p = np.array(f['index/select_2p_bin4'])
-        mask_2m = np.array(f['index/select_2m_bin4'])
+        elif select_src == "bin2":
+            sel_src = f['index/select_bin2'][:]
+            mask_1p = f['index/select_1p_bin2'][:]
+            mask_1m = f['index/select_1m_bin2'][:]
+            mask_2p = f['index/select_2p_bin2'][:]
+            mask_2m = f['index/select_2m_bin2'][:]
 
-    print("Load sel_src and mask.")
+        elif select_src == "bin3":
+            sel_src = f['index/select_bin3'][:]
+            mask_1p = f['index/select_1p_bin3'][:]
+            mask_1m = f['index/select_1m_bin3'][:]
+            mask_2p = f['index/select_2p_bin3'][:]
+            mask_2m = f['index/select_2m_bin3'][:]
 
-    dgamma = 2 * 0.01
+        elif select_src == "bin4":
+            sel_src = f['index/select_bin4'][:]
+            mask_1p = f['index/select_1p_bin4'][:]
+            mask_1m = f['index/select_1m_bin4'][:]
+            mask_2p = f['index/select_2p_bin4'][:]
+            mask_2m = f['index/select_2m_bin4'][:]
 
-    R11s = (
-        np.array(f['catalog/metacal/unsheared/e_1'])[mask_1p].mean() -
-        np.array(f['catalog/metacal/unsheared/e_1'])[mask_1m].mean()) / dgamma
+        print("Load sel_src and mask.")
 
-    R22s = (
-        np.array(f['catalog/metacal/unsheared/e_2'])[mask_2p].mean() -
-        np.array(f['catalog/metacal/unsheared/e_2'])[mask_2m].mean()) / dgamma
+        dgamma = 2 * 0.01
 
-    print("Load R11s R22s.")
+        R11s = (f['catalog/metacal/unsheared/e_1'][:][mask_1p].mean() -
+                f['catalog/metacal/unsheared/e_1'][:][mask_1m].mean()) / dgamma
 
-    Rs = 0.5 * (R11s + R22s)
+        R22s = (f['catalog/metacal/unsheared/e_2'][:][mask_2p].mean() -
+                f['catalog/metacal/unsheared/e_2'][:][mask_2m].mean()) / dgamma
 
-    ra = np.array(f['catalog/gold/ra'])[sel_src]
-    dec = np.array(f['catalog/gold/dec'])[sel_src]
-    R11 = np.array(f['catalog/metacal/unsheared/R11'])[sel_src]
-    R22 = np.array(f['catalog/metacal/unsheared/R22'])[sel_src]
-    R12 = np.array(f['catalog/metacal/unsheared/R12'])[sel_src]
-    R21 = np.array(f['catalog/metacal/unsheared/R21'])[sel_src]
-    e1 = np.array(f['catalog/metacal/unsheared/e_1'])[sel_src]
-    e2 = np.array(f['catalog/metacal/unsheared/e_2'])[sel_src]
-    z_bpz = np.array(f['catalog/bpz/unsheared/zmean_sof'])[sel_src]
-    z_dnf = np.array(f['catalog/dnf/unsheared/zmean_sof'])[sel_src]
-    zmc_dnf = np.array(f['catalog/dnf/unsheared/zmc_sof'])[sel_src]
-    zmc_bpz = np.array(f['catalog/bpz/unsheared/zmc_sof'])[sel_src]
-    w_e = np.array(f['catalog/metacal/unsheared/weight'])[sel_src]
-    e1_mean = np.average(e1, weights=w_e)
-    e2_mean = np.average(e2, weights=w_e)
-    e1 = e1 - e1_mean
-    e2 = e2 - e2_mean
+        print("Load R11s R22s.")
 
-    print("Load others.")
+        Rs = 0.5 * (R11s + R22s)
+
+        ra = f['catalog/gold/ra'][:][sel_src]
+        dec = f['catalog/gold/dec'][:][sel_src]
+        R11 = f['catalog/metacal/unsheared/R11'][:][sel_src]
+        R22 = f['catalog/metacal/unsheared/R22'][:][sel_src]
+        R12 = f['catalog/metacal/unsheared/R12'][:][sel_src]
+        R21 = f['catalog/metacal/unsheared/R21'][:][sel_src]
+        e1 = f['catalog/metacal/unsheared/e_1'][:][sel_src]
+        e2 = f['catalog/metacal/unsheared/e_2'][:][sel_src]
+        z_bpz = f['catalog/bpz/unsheared/zmean_sof'][:][sel_src]
+        z_dnf = f['catalog/dnf/unsheared/zmean_sof'][:][sel_src]
+        zmc_dnf = f['catalog/dnf/unsheared/zmean_sof'][:][sel_src]
+        zmc_bpz = f['catalog/bpz/unsheared/zmc_sof'][:][sel_src]
+        w_e = f['catalog/metacal/unsheared/weight'][:][sel_src]
+        e1_mean = np.average(e1, weights=w_e)
+        e2_mean = np.average(e2, weights=w_e)
+        e1 = e1 - e1_mean
+        e2 = e2 - e2_mean
+
+        print("Load others.")
 
     hpix = hp.ang2pix(
         512, ra, dec, nest=True, lonlat=True
     )  ### nside 512, nested ==> each heal-pixel is about 0.12 deg in diameter
 
-    func_dist = dist_comoving(cosmo, h)
+    print("Calculating comoving distance.")
+
     dist_bpz = func_dist(z_bpz)
     dist_dnf = func_dist(z_dnf)
     distmc_bpz = func_dist(zmc_bpz)
@@ -198,12 +198,9 @@ def cut_source(catdir_name,
     print(np.min(zmc_dnf))
     assert ~np.any(distmc_dnf == 0)
 
-    print("Calculating comoving distance.")
-
     if jk_dir is not None:
         #
         if run_jk_kmeans:
-
             ratem = ra.copy()
             ratem[ratem > 250.] -= 360.
             radec = np.vstack((ratem, dec)).T
