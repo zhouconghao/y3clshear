@@ -1,4 +1,4 @@
-from measure_clshear import cut_catalog, cut_source, R_bin, run_DS
+from measure_clshear import cut_catalog, cut_source, R_bin, run_DS, dist_comoving
 import numpy as np
 
 from mpi4py import MPI
@@ -12,6 +12,8 @@ if __name__ == "__main__":
 
     h = 0.7
     cosmo = FlatLambdaCDM(H0=100. * h, Om0=0.3)
+
+    dist_func = dist_comoving(cosmo, h)
 
     comm = MPI.COMM_WORLD
     mpi_size = comm.Get_size()
@@ -34,8 +36,8 @@ if __name__ == "__main__":
 
     len_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_lgt20_vl02_catalog.fit'
     ran_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_randcat_z0.10-0.95_lgt020_vl02.fit'
-    src_dir = '/global/cfs/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.0_DO_NOT_USE.h5'
-    # src_dir = '/global/cfs/projectdirs/des/www/y3_cats/Y3_mastercat_6_15_19_subsampled.h5'
+    src_dir = '/global/cfs/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.1_12_22_20.h5'
+    # src_dir = '/global/cfs/projectdirs/des/zhou/y3clshear/Y3_mastercat___UNBLIND___final_v1.1_12_22_20.h5'
     dat_save_dir = './'
 
     dict_lens_cut = {
@@ -83,11 +85,10 @@ if __name__ == "__main__":
 
     src_cat = cut_source(src_dir,
                          select_src,
-                         run_jk_kmeans=False,
+                         run_jk_kmeans=True,
                          jk_dir=dat_save_dir + "jk_src_%s" % (select_src),
                          run_healpy=True,
-                         cosmo=cosmo,
-                         h=h)
+                         func_dist=dist_func)
     t2 = t.time()
 
     print("Time spent cutting source ", (t2 - t1))

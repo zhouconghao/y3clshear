@@ -18,4 +18,4 @@ source activate y3clshear
 echo $CONDA_PREFIX
 
 #srun -n 10 python mympi.py
-srun -n 10 python -u run_cl.py 0.1 0.5 2 /global/cfs/cdirs/des/zhou/y3clshear/catalogs 20 100 0.1 10 10 dnf
+srun -n 1 python -u run_cl.py 0.1 0.5 2 /global/cfs/cdirs/des/zhou/y3clshear/catalogs 20 100 0.1 10 10 dnf
