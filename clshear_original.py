@@ -16,7 +16,6 @@ import os
 import sys
 from scipy.interpolate import interp1d
 from scipy import integrate
-import treecorr
 import kmeans_radec
 
 center_data = np.loadtxt('./data/kmeans_centers_npix100_desy3.dat',
@@ -350,6 +349,7 @@ if __name__ == "__main__":
     ran_dir = './catalogs/y3_gold_2.2.1_wide_sofcol_run2_redmapper_v6.4.22+2_randcat_z0.10-0.95_lgt020_vl02.fit'
     src_dir = '/project/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.1_12_22_20.h5'
     dat_save_dir = '/global/cscratch1/sd/taeshin/'
+
     dict_lens_cut = {
         "Z_LAMBDA": [zmin, zmax],
         "LAMBDA_CHISQ": [lmin, lmax]
