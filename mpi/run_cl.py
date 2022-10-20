@@ -80,20 +80,10 @@ if __name__ == "__main__":
         len_cat = len_cat[mpi_rank * N_step:]
         N_lens = len(len_cat)
 
-    N_rand = 20 * N_lens
-
-    ran_cat = cut_catalog(ran_dir,
-                          dict_rand_cut,
-                          random=True,
-                          N_randoms=N_rand)
-
     RA_len = len_cat["RA"]
     DEC_len = len_cat["DEC"]
     Z_len = len_cat["Z"]
-
-    RA_ran = ran_cat["RA"]
-    DEC_ran = ran_cat["DEC"]
-    Z_ran = ran_cat["ZTRUE"]
+    id_len = len_cat["mem_match_id"]
 
     print("Start cutting source.")
 
@@ -111,11 +101,12 @@ if __name__ == "__main__":
 
     t1 = t.time()
 
-    empty_array = np.zeros((N_lens, len(Rmid)))
-    empty_pz_array = np.zeros((N_lens, len(Rmid), 301))
-
-    top_array, top_im_array, bottom_array, weight_array = empty_array, empty_array, empty_array, empty_array
-    pz_bpz_array, pz_dnf_array = empty_pz_array, empty_pz_array
+    top_array = np.zeros((N_lens, len(Rmid)))
+    top_im_array = np.zeros((N_lens, len(Rmid)))
+    bottom_array = np.zeros((N_lens, len(Rmid)))
+    weight_array = np.zeros((N_lens, len(Rmid)))
+    pz_bpz_array = np.zeros((N_lens, len(Rmid), 301))
+    pz_dnf_array = np.zeros((N_lens, len(Rmid), 301))
 
     for run_id in trange(N_lens):
         top, top_im, bottom, weight, pz_bpz, pz_dnf = run_DS(
@@ -139,31 +130,12 @@ if __name__ == "__main__":
         pz_bpz_array[run_id, :] = pz_bpz
         pz_dnf_array[run_id, :] = pz_dnf
 
-    print("Start calculating randoms.")
-
-    ran_top_array, ran_top_im_array, ran_bottom_array, ran_weight_array = empty_array, empty_array, empty_array, empty_array
-    ran_pz_bpz_array, ran_pz_dnf_array = empty_pz_array, empty_pz_array
-
-    for run_id in trange(N_rand):
-        ran_top, ran_top_im, ran_bottom, ran_weight, ran_pz_bpz, ran_pz_dnf = run_DS(
-            RA_ran[run_id],
-            DEC_ran[run_id],
-            Z_ran[run_id],
-            R,
-            src_cat,
-            select_src='dnf',
-            comoving=True,
-            cut_with_jk=True,
-            cosmo=cosmo,
-            center_data=center_data,
-            h=h,
-            NBINS=NBINS)
-
     save_dir = "/data/groups/jeltema/zhou/y3clshear/output"
     out_path = os.path.join(save_dir, f"output_{mpi_rank}.npz")
 
     np.savez(
         out_path,
+        id=id_len,
         top=top_array,
         top_im=top_im_array,
         bottom=bottom_array,
